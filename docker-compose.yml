@@ -1,0 +1,17 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: drajbot_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: drajbot_root_pass
+      MYSQL_DATABASE: drajbot_db
+      MYSQL_USER: drajbot_admin
+      MYSQL_PASSWORD: drajbot_secure_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - drajbot_mysql_data:/var/lib/mysql
+
+volumes:
+  drajbot_mysql_data:

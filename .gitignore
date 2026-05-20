@@ -1,0 +1,52 @@
+# =========================
+# 1. VISUAL STUDIO & C# (BACKEND)
+# =========================
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+[Bb]in/
+[Oo]bj/
+*.sqlite3
+
+# =========================
+# 2. NODE.JS & REACT (FRONTEND - tvoj kod sa ForgeBoarda)
+# =========================
+node_modules/
+dist/
+build/
+.cache
+.npm
+.eslintcache
+.yarn-integrity
+*.tgz
+.nuxt
+.next
+.vuepress/dist
+
+# Node logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.nyc_output
+
+# =========================
+# 3. BEZBEDNOST (TAJNE I LOZINKE - NAJBITNIJE!)
+# =========================
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+appsettings.Development.json
+*.pfx
+*.publishsettings
+
+# =========================
+# 4. OPERATIVNI SISTEMI I DOCKER
+# =========================
+.DS_Store
+Thumbs.db
+.docker/
