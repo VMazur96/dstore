@@ -8,5 +8,7 @@ namespace Drajbot.Api.Data
     {
         // Ovde ćemo dodavati sve tabele. Za sada imamo samo Users.
         public DbSet<User> Users { get; set; }
+        public DbSet<Game> Games { get; set; }
+        public DbSet<Product> Products { get; set; }
     }
 }

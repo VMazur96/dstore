@@ -1,26 +1,52 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Drajbot.Api.DTOs.Catalogs;
+using Drajbot.Api.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Drajbot.Api.Controllers
 {
     [ApiController]
-    [Route("api/products")]
-    public class ProductsController : ControllerBase
+    [Route("api/catalog")] // Promenjeno u catalog da bude logičnije
+    public class ProductsController(ICatalogService catalogService) : ControllerBase
     {
-        // 1. Nivo: JAVNO (Svako može da pregleda cene i katalog)
-        [HttpGet]
-        public IActionResult GetCatalog()
+        // Samo Admin može da napravi novu igru (npr. Fortnite, PUBG)
+        [HttpPost("games")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> CreateGame([FromBody] GameCreateDto request)
         {
-            return Ok(new { poruka = "Katalog je otvoren: Prikazujem V-Bucks pakete i dostupne skinove..." });
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            var result = await catalogService.AddGameAsync(request);
+            return Ok(new { poruka = result });
         }
 
-        // 2. Nivo: SAMO ADMIN (Zaključano za sve osim za ulogu Admin)
-        [HttpPost]
+        // Samo Admin može da dodaje pakete unutar igre (npr. 1000 V-Bucks)
+        [HttpPost("items")]
         [Authorize(Roles = "Admin")]
-        public IActionResult AddProduct()
+        public async Task<IActionResult> CreateProduct([FromBody] ProductCreateDto request)
         {
-            // Ovde će kasnije ići prava logika za upis u bazu
-            return Ok(new { poruka = "Admin akcija: Novi item je uspešno dodat u sistem!" });
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+            var result = await catalogService.AddProductAsync(request);
+
+            if (result.StartsWith("Greška"))
+                return BadRequest(new { poruka = result });
+
+            return Ok(new { poruka = result });
+        }
+
+        // 1. Prikaz početne strane (Grid svih Igara)
+        [HttpGet("games")]
+        public async Task<IActionResult> GetGames()
+        {
+            var games = await catalogService.GetGamesAsync();
+            return Ok(games);
+        }
+
+        // 2. Prikaz paketa kada se klikne na Igru (npr. ID 1 za Fortnite)
+        [HttpGet("games/{gameId}/items")]
+        public async Task<IActionResult> GetItemsForGame(int gameId)
+        {
+            var items = await catalogService.GetProductsByGameAsync(gameId);
+            return Ok(items);
         }
     }
 }
