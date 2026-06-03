@@ -1,6 +1,7 @@
 ﻿using Drajbot.Api.Data;
 using Drajbot.Api.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
@@ -20,6 +21,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 builder.Services.AddScoped<IAuthService, Drajbot.Api.Services.Auth.AuthService>();
 builder.Services.AddScoped<ICatalogService, Drajbot.Api.Services.Catalogs.CatalogService>(); // <-- NOVI SERVIS!
 builder.Services.AddScoped<IFortniteShopService, Drajbot.Api.Services.Fortnite.FortniteShopService>();
+builder.Services.AddScoped<IOrderService, Drajbot.Api.Services.Orders.OrderService>();
 
 builder.Services.AddHttpClient(); // <-- OVO PALI INTERNET KONEKCIJU ZA NAŠ SERVER
 
@@ -62,6 +64,25 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateLifetime = true
         };
     });
+
+builder.Services.AddRateLimiter(options =>
+{
+    options.AddTokenBucketLimiter("login_policy", opt =>
+    {
+        opt.TokenLimit = 5;          // Korisnik ima 5 pokušaja "u džepu"
+        opt.QueueProcessingOrder = System.Threading.RateLimiting.QueueProcessingOrder.OldestFirst;
+        opt.QueueLimit = 0;          // Ne čekaj u redu, odmah odbij ako nema tokena
+        opt.ReplenishmentPeriod = TimeSpan.FromMinutes(5); // Krediti se pune na 5 minuta
+        opt.TokensPerPeriod = 5;     // Dopuni svih 5 kredita na 5 minuta
+        opt.AutoReplenishment = true;
+    });
+
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.StatusCode = 429; // Too Many Requests
+        await context.HttpContext.Response.WriteAsJsonAsync(new { poruka = "Previše pokušaja. Sačekajte 5 minuta." });
+    };
+});
 
 // =======================================================
 // 2. ZAKLJUČAVANJE APLIKACIJE

@@ -1,6 +1,7 @@
 ﻿using Drajbot.Api.DTOs.Auth;
 using Drajbot.Api.Interfaces;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace Drajbot.Api.Controllers
 {
@@ -23,6 +24,7 @@ namespace Drajbot.Api.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting("login_policy")]
         public async Task<IActionResult> Login([FromBody] UserLoginDto request)
         {
             if (!ModelState.IsValid)

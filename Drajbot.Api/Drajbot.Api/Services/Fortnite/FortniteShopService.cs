@@ -30,6 +30,7 @@ namespace Drajbot.Api.Services.Fortnite
             // Pozivamo oficijalni API za shop (Samo Battle Royale shop)
             var response = await httpClient.GetAsync("https://fortnite-api.com/v2/shop");
 
+
             if (!response.IsSuccessStatusCode)
                 throw new Exception("Neuspešno povezivanje sa Fortnite API serverom.");
 
@@ -39,7 +40,8 @@ namespace Drajbot.Api.Services.Fortnite
 
             var shopResponse = new FortniteShopResponseDto
             {
-                Date = data.GetProperty("date").GetString() ?? DateTime.UtcNow.ToString("yyyy-MM-dd")
+                Date = data.GetProperty("date").GetString() ?? DateTime.UtcNow.ToString("yyyy-MM-dd"),
+                ExpirationDate = DateTime.UtcNow.Date.AddDays(1) // Uvek gađa tačno sledeću ponoć!
             };
 
             var entries = data.GetProperty("entries");

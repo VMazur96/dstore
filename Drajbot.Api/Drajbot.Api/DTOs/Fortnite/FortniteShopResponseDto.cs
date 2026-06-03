@@ -5,6 +5,7 @@
     {
         public string Date { get; set; } = string.Empty;
         public string CreatorCode { get; set; } = "DRAJBOT"; // Tvoj zakucani kod!
+        public DateTime ExpirationDate { get; set; }
         public List<FortniteItemDto> Items { get; set; } = [];
     }
 
