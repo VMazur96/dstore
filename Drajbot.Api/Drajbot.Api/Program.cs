@@ -22,11 +22,27 @@ builder.Services.AddScoped<IAuthService, Drajbot.Api.Services.Auth.AuthService>(
 builder.Services.AddScoped<ICatalogService, Drajbot.Api.Services.Catalogs.CatalogService>(); // <-- NOVI SERVIS!
 builder.Services.AddScoped<IFortniteShopService, Drajbot.Api.Services.Fortnite.FortniteShopService>();
 builder.Services.AddScoped<IOrderService, Drajbot.Api.Services.Orders.OrderService>();
+builder.Services.AddScoped<IUploadService, Drajbot.Api.Services.Uploads.UploadService>();
+builder.Services.AddScoped<IReviewService, Drajbot.Api.Services.Reviews.ReviewService>();
+builder.Services.AddScoped<IEmailService, Drajbot.Api.Services.Emails.EmailService>();
+builder.Services.AddScoped<IWishlistService, Drajbot.Api.Services.Wishlist.WishlistService>();
 
 builder.Services.AddHttpClient(); // <-- OVO PALI INTERNET KONEKCIJU ZA NAŠ SERVER
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+
+// Definisanje CORS polise za Frontend
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendCorsPolicy", policy =>
+    {
+        policy.WithOrigins("http://localhost:3000", "http://localhost:5173") // Ovde idu adrese tvog React sajta (dodali smo standardne portove)
+              .AllowAnyHeader()
+              .AllowAnyMethod()
+              .AllowCredentials(); // <--- OVO JE KLJUČNO! Dozvoljava HttpOnly Cookies!
+    });
+});
 
 // --- SWAGGER ---
 builder.Services.AddSwaggerGen(c =>
@@ -62,6 +78,16 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidAudience = builder.Configuration["Jwt:Audience"],
             ValidateLifetime = true
+        };
+
+        // DODATO: Kažemo serveru da automatski izvuče token iz Cookie-ja
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                context.Token = context.Request.Cookies["jwt"];
+                return Task.CompletedTask;
+            }
         };
     });
 
@@ -101,6 +127,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseStaticFiles();
+
+app.UseCors("FrontendCorsPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();

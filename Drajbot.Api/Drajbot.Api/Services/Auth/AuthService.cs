@@ -11,7 +11,7 @@ using System.Text;
 
 namespace Drajbot.Api.Services.Auth
 {
-    public class AuthService(ApplicationDbContext context, IConfiguration config) : IAuthService
+    public class AuthService(ApplicationDbContext context, IConfiguration config, IEmailService emailService) : IAuthService
     {
         public async Task<string> RegisterAsync(UserRegisterDto request)
         {
@@ -71,6 +71,62 @@ namespace Drajbot.Api.Services.Auth
 
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
+        }
+
+        public async Task<string> ForgotPasswordAsync(ForgotPasswordDto request)
+        {
+            var user = await context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            if (user == null)
+                return "Ukoliko email postoji u bazi, poslat je kod za resetovanje."; // Ne odajemo hakeru da li mejl postoji!
+
+            // 1. Generisanje random koda od 6 karaktera (slova i brojevi)
+            string randomCode = Guid.NewGuid().ToString()[..6].ToUpper();
+
+            // 2. Čuvanje u bazi (Ističe za 15 minuta)
+            user.PasswordResetToken = randomCode;
+            user.ResetTokenExpires = DateTime.UtcNow.AddMinutes(15);
+            await context.SaveChangesAsync();
+
+            // 3. Slanje emaila
+            string emailBody = $@"
+                <div style='font-family: Arial, sans-serif; background-color: #121212; color: #ffffff; padding: 20px; border-radius: 10px;'>
+                    <h2 style='color: #00BCD4;'>D'RAJBOT Game Shop</h2>
+                    <p>Primili smo zahtev za promenu lozinke.</p>
+                    <p>Vaš kod za resetovanje je: <strong style='font-size: 24px; color: #00BCD4;'>{randomCode}</strong></p>
+                    <p>Ovaj kod ističe za 15 minuta. Ako niste zatražili promenu, ignorišite ovu poruku.</p>
+                </div>";
+
+            // Namerno gađamo u Try-Catch, da nam server ne bi "pao" ako je loša Gmail šifra
+            try
+            {
+                await emailService.SendEmailAsync(user.Email, "Resetovanje lozinke - D'RAJBOT", emailBody);
+            }
+            catch { return "Greška pri slanju emaila. Proverite konfiguraciju."; }
+
+            return "Ukoliko email postoji u bazi, poslat je kod za resetovanje.";
+        }
+
+        public async Task<string> ResetPasswordAsync(ResetPasswordDto request)
+        {
+            var user = await context.Users.FirstOrDefaultAsync(u => u.Email == request.Email);
+            if (user == null) return "Greška: Neispravni podaci.";
+
+            // 1. Provera da li je kod tačan i da li je istekao
+            if (user.PasswordResetToken != request.Token)
+                return "Greška: Neispravan kod za resetovanje.";
+
+            if (user.ResetTokenExpires < DateTime.UtcNow)
+                return "Greška: Kod je istekao. Zatražite novi.";
+
+            // 2. Sve je u redu, heširamo novu šifru!
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
+
+            // 3. Poništavamo token da ne bi mogao ponovo da se iskoristi
+            user.PasswordResetToken = null;
+            user.ResetTokenExpires = null;
+
+            await context.SaveChangesAsync();
+            return "Lozinka je uspešno promenjena! Možete se prijaviti.";
         }
     }
 }

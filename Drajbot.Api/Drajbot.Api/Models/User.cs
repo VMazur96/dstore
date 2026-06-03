@@ -36,6 +36,10 @@ namespace Drajbot.Api.Models
 
         public bool IsActive { get; set; } = true;
 
+        [MaxLength(10)]
+        public string? PasswordResetToken { get; set; }
+        public DateTime? ResetTokenExpires { get; set; }
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

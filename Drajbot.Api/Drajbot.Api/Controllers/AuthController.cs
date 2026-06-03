@@ -35,8 +35,51 @@ namespace Drajbot.Api.Controllers
             if (tokenOrError == "Pogrešni kredencijali.")
                 return Unauthorized(new { poruka = tokenOrError });
 
-            // Ako je sve u redu, vraćamo naš JWT token klijentu!
-            return Ok(new { token = tokenOrError, poruka = "Uspešna prijava!" });
+            // 1. BEZBEDNOST: Pakujemo JWT token u HttpOnly Cookie
+            var cookieOptions = new CookieOptions
+            {
+                HttpOnly = true, // Zabranjuje JavaScript-u da čita token (XSS zaštita)
+                Secure = true, // Radi samo preko HTTPS konekcije
+                SameSite = SameSiteMode.Strict, // Sprečava CSRF napade (zahtevi sa drugih sajtova)
+                Expires = DateTime.UtcNow.AddDays(7) // Ističe kad i sam token
+            };
+
+            // 2. Šaljemo cookie klijentu
+            Response.Cookies.Append("jwt", tokenOrError, cookieOptions);
+
+            // 3. Vraćamo samo poruku, BEZ tokena u telu odgovora!
+            return Ok(new { poruka = "Uspešna prijava!" });
+        }
+
+        // NOVA RUTA ZA ODJAVU
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            // Brišemo cookie iz pregledača
+            Response.Cookies.Delete("jwt");
+            return Ok(new { poruka = "Uspešno ste odjavljeni." });
+        }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordDto request)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var result = await authService.ForgotPasswordAsync(request);
+            if (result.StartsWith("Greška")) return BadRequest(new { poruka = result });
+
+            return Ok(new { poruka = result });
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordDto request)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var result = await authService.ResetPasswordAsync(request);
+            if (result.StartsWith("Greška")) return BadRequest(new { poruka = result });
+
+            return Ok(new { poruka = result });
         }
     }
 }

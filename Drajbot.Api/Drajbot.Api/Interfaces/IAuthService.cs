@@ -6,5 +6,7 @@ namespace Drajbot.Api.Interfaces
     {
         Task<string> RegisterAsync(UserRegisterDto request);
         Task<string> LoginAsync(UserLoginDto request);
+        Task<string> ForgotPasswordAsync(ForgotPasswordDto request);
+        Task<string> ResetPasswordAsync(ResetPasswordDto request);
     }
 }
