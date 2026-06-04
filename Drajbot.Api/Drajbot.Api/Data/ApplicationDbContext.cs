@@ -15,5 +15,8 @@ namespace Drajbot.Api.Data
         public DbSet<ProductReview> ProductReviews { get; set; }
         public DbSet<SiteReview> SiteReviews { get; set; }
         public DbSet<UserWishlist> UserWishlists { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
+        public DbSet<AuditLog> AuditLogs { get; set; }
+        public DbSet<BlogPost> BlogPosts { get; set; }
     }
 }

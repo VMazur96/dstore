@@ -36,6 +36,15 @@ namespace Drajbot.Api.Services.Auth
 
             context.Users.Add(newUser);
             await context.SaveChangesAsync();
+
+            // Slanje mejla dobrodošlice
+            try
+            {
+                string welcomeEmail = Utils.EmailTemplates.GetWelcomeEmail(request.FirstName, request.Username);
+                await emailService.SendEmailAsync(request.Email, "Dobrodošli u D'RAJBOT Game Shop", welcomeEmail);
+            }
+            catch { /* Ako pukne slanje, ne prekidamo registraciju */ }
+
             return "Uspesno";
         }
 
@@ -49,6 +58,21 @@ namespace Drajbot.Api.Services.Auth
             // Zbog bezbednosti, uvek vraćamo istu poruku da haker ne bi znao da li je pogrešio email ili šifru.
             if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
                 return "Pogrešni kredencijali.";
+
+            // OVO DODAJEMO: Logika za automatsku reaktivaciju
+            if (!user.IsActive)
+            {
+                user.IsActive = true;
+                await context.SaveChangesAsync();
+
+                // Opciono: Slanje mejla da mu je nalog reaktiviran
+                try
+                {
+                    string reactivatedEmail = Utils.EmailTemplates.GetBaseTemplate("Nalog reaktiviran", "<p>Vaš D'RAJBOT nalog je upravo uspešno reaktiviran prijavljivanjem na sistem. Dobrodošli nazad!</p>");
+                    await emailService.SendEmailAsync(user.Email, "Nalog je reaktiviran - D'RAJBOT", reactivatedEmail);
+                }
+                catch { /* Ignorišemo grešku pri slanju */ }
+            }
 
             // 3. Generisanje JWT Tokena
             var tokenHandler = new JwtSecurityTokenHandler();
@@ -88,15 +112,8 @@ namespace Drajbot.Api.Services.Auth
             await context.SaveChangesAsync();
 
             // 3. Slanje emaila
-            string emailBody = $@"
-                <div style='font-family: Arial, sans-serif; background-color: #121212; color: #ffffff; padding: 20px; border-radius: 10px;'>
-                    <h2 style='color: #00BCD4;'>D'RAJBOT Game Shop</h2>
-                    <p>Primili smo zahtev za promenu lozinke.</p>
-                    <p>Vaš kod za resetovanje je: <strong style='font-size: 24px; color: #00BCD4;'>{randomCode}</strong></p>
-                    <p>Ovaj kod ističe za 15 minuta. Ako niste zatražili promenu, ignorišite ovu poruku.</p>
-                </div>";
+            string emailBody = Utils.EmailTemplates.GetForgotPasswordEmail(randomCode);
 
-            // Namerno gađamo u Try-Catch, da nam server ne bi "pao" ako je loša Gmail šifra
             try
             {
                 await emailService.SendEmailAsync(user.Email, "Resetovanje lozinke - D'RAJBOT", emailBody);
@@ -126,7 +143,58 @@ namespace Drajbot.Api.Services.Auth
             user.ResetTokenExpires = null;
 
             await context.SaveChangesAsync();
+
+            // Slanje obaveštenja o uspešnoj promeni
+            try
+            {
+                string successEmail = Utils.EmailTemplates.GetPasswordChangedEmail();
+                await emailService.SendEmailAsync(user.Email, "Vaša lozinka je promenjena", successEmail);
+            }
+            catch { /* Ignore */ }
+
             return "Lozinka je uspešno promenjena! Možete se prijaviti.";
+        }
+
+        public async Task<string> DeleteAccountAsync(int userId, string password)
+        {
+            var user = await context.Users.FindAsync(userId);
+            if (user == null) return "Greška: Korisnik nije pronađen.";
+
+            // 1. BEZBEDNOST: Potvrda lozinke
+            if (!BCrypt.Net.BCrypt.Verify(password, user.PasswordHash))
+                return "Greška: Netačna lozinka. Brisanje naloga je otkazano.";
+
+            // 2. SOFT-DELETE (Samo zamrzavamo nalog!)
+            // Ne menjamo mu Email i Šifru, kako bi mogao nekad da se reaktivira!
+            user.IsActive = false;
+
+            // Brišemo mu listu želja čisto da mu očistimo keš
+            var wishlists = await context.UserWishlists.Where(w => w.UserId == userId).ToListAsync();
+            context.UserWishlists.RemoveRange(wishlists);
+
+            await context.SaveChangesAsync();
+            return "Vaš nalog je deaktiviran. Ukoliko se ponovo prijavite sa svojim podacima, nalog će biti reaktiviran.";
+        }
+
+        public async Task<string> AdminForceChangeCredentialsAsync(int targetUserId, string? newEmail, string? newPassword)
+        {
+            var user = await context.Users.FindAsync(targetUserId);
+            if (user == null) return "Greška: Korisnik nije pronađen.";
+
+            if (!string.IsNullOrWhiteSpace(newEmail))
+            {
+                if (await context.Users.AnyAsync(u => u.Email == newEmail && u.Id != targetUserId))
+                    return "Greška: Ovaj email već koristi neko drugi.";
+                user.Email = newEmail;
+            }
+
+            if (!string.IsNullOrWhiteSpace(newPassword))
+            {
+                user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+            }
+
+            await context.SaveChangesAsync();
+            return "Podaci korisnika su uspešno promenjeni od strane administratora.";
         }
     }
 }

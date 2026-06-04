@@ -19,7 +19,7 @@ namespace Drajbot.Api.Services.Orders
             var order = new Order
             {
                 UserId = userId,
-                GameUsername = request.GameUsername,
+                AccountDetails = request.AccountDetails,
                 TotalPrice = total,
                 Status = "Pending",
                 CreatedAt = DateTime.UtcNow
@@ -40,7 +40,7 @@ namespace Drajbot.Api.Services.Orders
             context.OrderItems.AddRange(orderItems);
             await context.SaveChangesAsync();
 
-            return $"Porudžbina #{order.Id} je kreirana. Nalog '{request.GameUsername}' je zabeležen.";
+            return $"Porudžbina #{order.Id} je kreirana. Nalog '{request.AccountDetails}' je zabeležen.";
         }
 
         // Korisnik povlači samo svoju istoriju kupovina
@@ -54,7 +54,7 @@ namespace Drajbot.Api.Services.Orders
                 {
                     Id = o.Id,
                     TotalPrice = o.TotalPrice,
-                    GameUsername = o.GameUsername ?? "",
+                    AccountDetails = o.AccountDetails ?? "",
                     Status = o.Status,
                     CreatedAt = o.CreatedAt,
                     Items = o.OrderItems.Select(i => new OrderItemResponseDto
@@ -79,7 +79,7 @@ namespace Drajbot.Api.Services.Orders
                 {
                     Id = o.Id,
                     TotalPrice = o.TotalPrice,
-                    GameUsername = o.GameUsername ?? "",
+                    AccountDetails = o.AccountDetails ?? "",
                     Status = o.Status,
                     CreatedAt = o.CreatedAt,
                     Items = o.OrderItems.Select(i => new OrderItemResponseDto
@@ -97,18 +97,27 @@ namespace Drajbot.Api.Services.Orders
         // Menjanje statusa sa ugrađenom zaštitom
         public async Task<string> UpdateOrderStatusAsync(int orderId, string newStatus)
         {
-            // 1. Definišemo koji su statusi jedino dozvoljeni na tvom sajtu
             var dozvoljeniStatusi = new[] { "Pending", "Completed", "Refunded", "Odbijeno" };
-
             if (!dozvoljeniStatusi.Contains(newStatus))
                 return $"Greška: Nevalidan status. Dozvoljeni su samo: {string.Join(", ", dozvoljeniStatusi)}";
 
-            // 2. Tražimo porudžbinu
             var order = await context.Orders.FindAsync(orderId);
             if (order == null) return "Greška: Porudžbina ne postoji u sistemu.";
 
-            // 3. Menjamo status
+            // Menjamo status
             order.Status = newStatus;
+
+            // NOVA LOGIKA ZA NOTIFIKACIJE (ZVONCE)
+            if (newStatus == "Completed")
+            {
+                var notification = new Notification
+                {
+                    UserId = order.UserId,
+                    Message = $"Tvoja porudžbina #{orderId} je uspešno isporučena! Ostavi nam recenziju i oceni nas."
+                };
+                context.Notifications.Add(notification);
+            }
+
             await context.SaveChangesAsync();
             return $"Status porudžbine #{orderId} uspešno promenjen u '{newStatus}'.";
         }

@@ -8,7 +8,8 @@ namespace Drajbot.Api.Controllers
 {
     [ApiController]
     [Route("api/reviews")]
-    public class ReviewsController(IReviewService reviewService) : ControllerBase
+    // Bilo je: public class ReviewsController(IReviewService reviewService) : ControllerBase
+    public class ReviewsController(IReviewService reviewService, IAuditService auditService) : ControllerBase
     {
         // 1. Ostavljanje recenzije za specifičnu IGRU (Zaštićeno: Korisnik)
         [HttpPost("product/{productId}")]
@@ -21,6 +22,9 @@ namespace Drajbot.Api.Controllers
             var result = await reviewService.AddProductReviewAsync(userId, productId, request);
 
             if (result.StartsWith("Greška")) return BadRequest(new { poruka = result });
+
+            await auditService.LogActionAsync(userId, "REVIEW_ADDED", $"Korisnik je ostavio recenziju (Ocena: {request.Rating}) za proizvod ID: {productId}.");
+
             return Ok(new { poruka = result });
         }
 

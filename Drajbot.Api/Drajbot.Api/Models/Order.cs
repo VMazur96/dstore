@@ -18,8 +18,8 @@ namespace Drajbot.Api.Models
         public decimal TotalPrice { get; set; }
 
         // Ovde korisnik upisuje svoj Epic Games Nick da bismo mu poslali gift!
-        [MaxLength(100)]
-        public string? GameUsername { get; set; }
+        [MaxLength(500)]
+        public string? AccountDetails { get; set; }
 
         // Status porudžbine: "Pending" (Čeka uplatu/48h), "Completed" (Isporučeno), "Cancelled"
         public string Status { get; set; } = "Pending";

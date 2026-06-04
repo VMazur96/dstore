@@ -8,7 +8,8 @@ namespace Drajbot.Api.Controllers
     [ApiController]
     [Route("api/wishlist")]
     [Authorize] // Katanac! Samo ulogovani korisnici imaju listu želja
-    public class WishlistController(IWishlistService wishlistService) : ControllerBase
+                // Bilo je: public class WishlistController(IWishlistService wishlistService) : ControllerBase
+    public class WishlistController(IWishlistService wishlistService, IAuditService auditService) : ControllerBase
     {
         [HttpPost("toggle/{productId}")]
         public async Task<IActionResult> ToggleItem(int productId)
@@ -17,6 +18,8 @@ namespace Drajbot.Api.Controllers
             var result = await wishlistService.ToggleWishlistItemAsync(userId, productId);
 
             if (result.StartsWith("Greška")) return BadRequest(new { poruka = result });
+
+            await auditService.LogActionAsync(userId, "WISHLIST_TOGGLE", $"Korisnik je manipulisao proizvodom ID: {productId} u listi želja. Rezultat: {result}");
 
             return Ok(new { poruka = result });
         }

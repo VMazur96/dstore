@@ -52,5 +52,9 @@ namespace Drajbot.Api.DTOs.Auth
                 }
             }
         }
+
+        [Required]
+        [Range(typeof(bool), "true", "true", ErrorMessage = "Morate potvrditi da imate preko 18 godina ili saglasnost roditelja.")]
+        public bool IsAdult { get; set; }
     }
 }

@@ -26,6 +26,7 @@ builder.Services.AddScoped<IUploadService, Drajbot.Api.Services.Uploads.UploadSe
 builder.Services.AddScoped<IReviewService, Drajbot.Api.Services.Reviews.ReviewService>();
 builder.Services.AddScoped<IEmailService, Drajbot.Api.Services.Emails.EmailService>();
 builder.Services.AddScoped<IWishlistService, Drajbot.Api.Services.Wishlist.WishlistService>();
+builder.Services.AddScoped<IAuditService, Drajbot.Api.Services.Audits.AuditService>();
 
 builder.Services.AddHttpClient(); // <-- OVO PALI INTERNET KONEKCIJU ZA NAŠ SERVER
 
